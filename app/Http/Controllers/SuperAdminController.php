@@ -1,4 +1,4 @@
-<?php
+<?php 
 
 namespace App\Http\Controllers;
 
@@ -6,76 +6,34 @@ use App\Models\Agence;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 
 class SuperAdminController extends Controller
 {
-    // Méthodes privées pour éviter les redondances
-
     /**
-     * Récupérer toutes les agences.
+     * Afficher la liste des administrateurs avec leurs agences.
      */
-    private function getAgences()
-    {
-        return Agence::all();
-    }
-
-    /**
-     * Récupérer les utilisateurs d'une agence spécifique (par défaut, exclut le super administrateur).
-     */
-    private function getUsersByAgence($roles = [])
-    {
-        // Filtrer les utilisateurs en excluant les super admins
-        $query = User::where('role', '!=', 'super_admin');
-    
-        // Si l'utilisateur connecté appartient à une agence, filtrer par agence
-        if (!empty(Auth::user()->agence_id)) {
-            $query->where('agence_id', Auth::user()->agence_id);
-        }
-    
-        // Appliquer les filtres de rôle si spécifiés
-        if (!empty($roles)) {
-            $query->whereIn('role', $roles);
-        }
-    
-        return $query->get();
-    }
-    
-    /**
-     * Valider les données de création ou mise à jour d'utilisateur.
-     */
-    private function validateUserRequest(Request $request, $isAdmin = false)
-    {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . ($request->id ?? 'NULL'),
-            'password' => 'nullable|string|min:8|confirmed',
-        ];
-
-        if ($isAdmin) {
-            $rules['agence_id'] = 'required|exists:agences,id';
-        } else {
-            $rules['role'] = ['required', Rule::in(['user', 'manager'])];
-        }
-
-        $request->validate($rules);
-    }
-
-    // Gestion des administrateurs
-
     public function showAdminsList()
     {
-        $users = User::all();
         $admins = User::where('role', 'admin')->with('agence')->get();
-        $agences = $this->getAgences();
+        $agences = Agence::all();
 
-        return view('superadmin.admins-list', compact('users', 'admins', 'agences'));
+        return view('superadmin.admins-list', compact('admins', 'agences'));
     }
 
+    /**
+     * Créer un administrateur et l'associer à une agence.
+     */
     public function storeAdmin(Request $request)
     {
-        $this->validateUserRequest($request, true);
+        // Validation directe dans cette méthode
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'agence_id' => 'required|exists:agences,id',
+        ]);
 
         User::create([
             'name' => $request->name,
@@ -83,103 +41,140 @@ class SuperAdminController extends Controller
             'password' => Hash::make($request->password),
             'agence_id' => $request->agence_id,
             'role' => 'admin',
+            'is_active' => true,
         ]);
 
-        return redirect()->route('superadmin.admins-list')->with('success', 'Administrateur créé avec succès.');
+        return redirect()->route('admins-list')->with('success', 'Administrateur créé avec succès.');
     }
 
-    public function editUserOrAdmin(Request $request, $id)
+    /**
+     * Modifier un administrateur.
+     */
+    public function updateAdmin(Request $request, $id)
     {
-        // Trouver l'utilisateur par son ID
         $user = User::findOrFail($id);
-    
-        // Vérification du rôle de l'utilisateur (admin ou utilisateur)
-        if ($user->role == 'admin') {
-            // Validation spécifique pour les administrateurs (si l'utilisateur est un admin)
-            $this->validateUserRequest($request, true);  
-        } else {
-            // Validation pour les utilisateurs (si l'utilisateur n'est pas un admin)
-            $this->validateUserRequest($request);  
-        }
-    
-        // Mise à jour des données communes : nom, email, et agence
+
+        // Validation directe dans cette méthode
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'password' => 'nullable|string|min:8|confirmed',
+            'agence_id' => 'required|exists:agences,id',
+        ]);
+
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
-            'agence_id' => $request->agence_id ?? $user->agence_id,  // Garder l'agence actuelle si non spécifié
+            'agence_id' => $request->agence_id,
         ]);
-    
-        // Mise à jour du mot de passe si rempli
+
         if ($request->filled('password')) {
             $user->update(['password' => Hash::make($request->password)]);
         }
-    
-        // Mise à jour du rôle si nécessaire (uniquement pour les utilisateurs qui ne sont pas administrateurs)
-        if ($user->role != 'admin' && $request->role) {
-            $user->update(['role' => $request->role]);
-        }
-    
-        // Redirection avec message de succès
-        return redirect()->route('superadmin.users-list')->with('success', 'Utilisateur ou administrateur mis à jour avec succès.');
+
+        return redirect()->route('admins-list')->with('success', 'Administrateur mis à jour avec succès.');
     }
-    
-    // Gestion des utilisateurs  
 
-    public function showUsersList(Request $request)
+      /**
+     * Récupérer les statistiques globales.
+     * Renvoie le nombre total d'agences, d'utilisateurs et d'administrateurs.
+     */
+    public function getStatistics()
     {
-        // Charger uniquement les utilisateurs avec le rôle 'user'
-        $users = User::with('agence')
-                     ->where('role', 'user')
-                     ->get(); // Récupérer tous les utilisateurs sans pagination
-     
-        $agences = $this->getAgences(); // Récupérer les agences si nécessaire
-     
-        return view('superadmin.users-list', compact('users', 'agences'));
-    }
+        $agenciesCount = Agence::count();
+        $adminsCount = User::where('role', 'admin')->count();
     
-
-    public function storeUser(Request $request)
-    {
-        $this->validateUserRequest($request);
-
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'agence_id' => Auth::user()->agence_id,
-            'role' => $request->role,
+        return response()->json([
+            'agencies' => $agenciesCount,
+            'admins' => $adminsCount,
         ]);
-
-        return redirect()->route('superadmin.admins-list')->with('success', 'Utilisateur créé avec succès.');
     }
+    
 
-    public function toggleUserActivation($id)
+   // Méthode pour basculer l'activation d'un administrateur
+   public function toggleUserStatus($id)
+   {
+       // Vérification des permissions de l'utilisateur
+       if (Auth::user()->role !== 'super_admin') {
+           return redirect()->route('home')->with('error', 'Vous n\'avez pas l\'autorisation d\'effectuer cette action.');
+       }
+
+       // Trouver l'administrateur par son ID
+       $admin = User::findOrFail($id);
+
+       // Sauvegarder l'état précédent de l'activation
+       $wasActive = $admin->is_active;
+
+       // Inverser l'état actif
+       $admin->is_active = !$admin->is_active;
+       $admin->save();
+
+       // Si l'utilisateur était actif et qu'il est maintenant désactivé, le déconnecter
+       if (!$admin->is_active && $wasActive) {
+           // Révoquer tous les tokens actifs (si Laravel Sanctum est utilisé)
+           $admin->tokens()->delete();  // Nécessite Laravel Sanctum si utilisé
+       }
+
+       // Déterminer le message de succès
+       $status = $admin->is_active ? 'activé' : 'désactivé';
+
+       // Retourner à la liste des administrateurs avec un message de succès
+       return redirect()->route('admins-list')->with('success', "L'administrateur a été $status avec succès.");
+   }
+
+
+   public function toggleAgencyStatus($id)
     {
-        $user = User::findOrFail($id);
-        $user->is_active = !$user->is_active;
-        $user->save();
-
-        if (!$user->is_active) {
-            Auth::logout();
-            return redirect()->route('login')->with('status');
+        // Vérification des permissions de l'utilisateur
+        if (Auth::user()->role !== 'super_admin') {
+            return response()->json(['error' => 'Vous n\'avez pas l\'autorisation d\'effectuer cette action.'], 403);
         }
-
-        return back()->with('status', 'L\'état de l\'utilisateur a été mis à jour.');
+    
+        try {
+            // Trouver l'agence par son ID
+            $agence = Agence::findOrFail($id);
+    
+            // Vérifier si l'agence est déjà active ou non
+            $wasActive = $agence->is_active;
+    
+            // Si l'agence est actuellement inactive, on l'active
+            if (!$wasActive) {
+                // Activation de l'agence
+                $agence->is_active = true;
+                $agence->save();
+    
+                // Activer tous les utilisateurs de cette agence
+                $agence->users()->update(['is_active' => true]);
+    
+                return response()->json([
+                    'status' => 'success',
+                    'is_active' => true,
+                    'message' => 'L\'agence a été activée avec succès.'
+                ]);
+            }
+    
+            // Si l'agence est active, on la désactive
+            if ($wasActive) {
+                // Désactivation de l'agence
+                $agence->is_active = false;
+                $agence->save();
+    
+                // Désactiver tous les utilisateurs de cette agence
+                $agence->users()->update(['is_active' => false]);
+    
+                return response()->json([
+                    'status' => 'success',
+                    'is_active' => false,
+                    'message' => 'L\'agence a été désactivée avec succès.'
+                ]);
+            }
+    
+        } catch (\Exception $e) {
+            // Log l'exception pour faciliter le debug
+            \Log::error('Erreur lors de la mise à jour de l\'agence: ' . $e->getMessage());
+    
+            return response()->json(['error' => 'Une erreur est survenue. Veuillez réessayer.'], 500);
+        }
     }
-    
-    
-     public function getStatistics()
-{
-    $agenciesCount = Agence::count(); 
-    $usersCount = User::count();
-    $adminsCount = User::where('role', 'admin')->count();
 
-    return response()->json([ 
-        'agencies' => $agenciesCount,
-        'users' => $usersCount,
-        'admins' => $adminsCount,
-    ]);
-}
-
- 
 }

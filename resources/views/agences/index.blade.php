@@ -2,147 +2,161 @@
 
 @section('content')
 <div class="container">
-    <h1>Liste des Agences</h1>
+    <h1 class="mb-4 text-center">Liste des Agences</h1>
 
-    <!-- Boutons pour créer une nouvelle agence -->
-    <button class="btn btn-primary mb-3" data-toggle="modal" data-target="#createModal"><i class="fas fa-plus"></i> Ajouter une agence</button>
-
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Nom</th>
-                <th>Adresse</th>
-                <th>Email</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($agences as $agence)
-            <tr>
-                <td>{{ $agence->nom }}</td>
-                <td>{{ $agence->adresse }}</td>
-                <td>{{ $agence->email }}</td>
-                <td>
-                    <!-- Boutons d'action -->
-                    <button class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editModal{{ $agence->id }}"><i class="fas fa-edit"></i> Modifier</button>
-                    <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteModal{{ $agence->id }}"><i class="fas fa-trash-alt"></i> Supprimer</button>
-                </td>
-            </tr>
-
-            <!-- Modal de modification -->
-            <div class="modal fade" id="editModal{{ $agence->id }}" tabindex="-1" role="dialog" aria-labelledby="editModalLabel{{ $agence->id }}" aria-hidden="true">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="editModalLabel{{ $agence->id }}">Modifier l'agence : {{ $agence->nom }}</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
+    <!-- Tableau des agences -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Agence</h3>
+            <button class="btn btn-primary float-end" data-bs-toggle="modal" data-bs-target="#createModal">
+                <i class="fas fa-plus"></i>Ajouter une Agence
+            </button>
+        </div>
+        <div class="card-body">
+            <table id="adminsTable" class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Adresse</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($agences as $agence)
+                    <tr>
+                        <td>{{ $agence->nom }}</td>
+                        <td>{{ $agence->adresse }}</td>
+                        <td>{{ $agence->email }}</td>
+                        <td>{{ $agence->telephone }}</td>
+                        <td>
+                            <!-- Afficher le statut de l'agence -->
+                            <span class="badge {{ $agence->is_active ? 'bg-success' : 'bg-danger' }}">
+                                {{ $agence->is_active ? 'Active' : 'Désactivée' }}
+                            </span>
+                        </td>
+                        <td>
+                            <!-- Actions -->
+                            <!-- Bouton Modifier -->
+                            <button class="btn btn-sm" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#editModal{{ $agence->id }}" 
+                                title="Modifier">
+                                <i class="fas fa-edit"></i> 
                             </button>
-                        </div>
-                        <form action="{{ route('agences.update', $agence->id) }}" method="POST" enctype="multipart/form-data">
-                            @csrf
-                            @method('PUT')
-                            <div class="modal-body">
-                                <div class="form-group">
-                                    <label for="nom">Nom</label>
-                                    <input type="text" name="nom" class="form-control" value="{{ $agence->nom }}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="adresse">Adresse</label>
-                                    <input type="text" name="adresse" class="form-control" value="{{ $agence->adresse }}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="email">Email</label>
-                                    <input type="email" name="email" class="form-control" value="{{ $agence->email }}" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="telephone">Téléphone</label>
-                                    <input type="text" name="telephone" class="form-control" value="{{ $agence->telephone }}">
-                                </div>
-                                <div class="form-group">
-                                    <label for="logo">Logo</label>
-                                    <input type="file" name="logo" class="form-control">
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                                <button type="submit" class="btn btn-primary">Mettre à jour</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Modal de confirmation de suppression -->
-            <div class="modal fade" id="deleteModal{{ $agence->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="deleteModalLabel">Confirmer la suppression</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
+                            <!-- Bouton Supprimer -->
+                            <button class="btn btn-sm" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#deleteModal{{ $agence->id }}" 
+                                title="Supprimer">
+                                <i class="fas fa-trash-alt"></i>
                             </button>
-                        </div>
-                        <div class="modal-body">
-                            Êtes-vous sûr de vouloir supprimer cette agence ?
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                            <form action="{{ route('agences.destroy', $agence->id) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">Supprimer</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            @endforeach
-        </tbody>
-    </table>
+
+                            <!-- Bouton Activer/Désactiver -->
+                            <button type="button" 
+                                    class="btn btn-sm {{ $agence->is_active ? 'btn-success' : 'btn-danger' }} btn-confirm"
+                                    data-url="{{ route('agences.toggle-status', $agence->id) }}"
+                                    data-action="{{ $agence->is_active ? 'Désactiver' : 'Activer' }}" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#confirmationModal"
+                                    title="{{ $agence->is_active ? 'Désactiver l\'agence' : 'Activer l\'agence' }}">
+                                <i class="fas fa-power-off"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 
-<!-- Modal de création -->
-<div class="modal fade" id="createModal" tabindex="-1" role="dialog" aria-labelledby="createModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<!-- Modals pour la création et l'édition -->
+@include('agences.create') <!-- Modal de création -->
+@foreach ($agences as $agence)
+    @include('agences.edit', ['agence' => $agence]) <!-- Modal d'édition -->
+    @include('agences.delete', ['agence' => $agence]) <!-- Modal de suppression -->
+@endforeach
+
+<!-- Modal pour confirmation d'action -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createModalLabel">Créer une nouvelle agence</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <h5 class="modal-title" id="confirmationModalLabel">Confirmer l'action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('agences.store') }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="nom">Nom</label>
-                        <input type="text" name="nom" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="adresse">Adresse</label>
-                        <input type="text" name="adresse" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" name="email" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="telephone">Téléphone</label>
-                        <input type="text" name="telephone" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="logo">Logo</label>
-                        <input type="file" name="logo" class="form-control">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Créer</button>
-                </div>
-            </form>
+            <div class="modal-body">
+                <!-- Texte dynamique -->
+                <p id="modalActionText">Êtes-vous sûr de vouloir effectuer cette action ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmAction">Confirmer</button>
+            </div>
         </div>
     </div>
 </div>
-
 @endsection
+
+@push('scripts')
+<script>
+    document.querySelectorAll('.btn-confirm').forEach(function(button) {
+        button.addEventListener('click', function(event) {
+            event.preventDefault(); // Empêche le comportement par défaut du bouton (ne pas soumettre tout de suite)
+
+            // Récupérer les informations du bouton
+            const url = button.getAttribute('data-url');
+            const action = button.getAttribute('data-action'); // 'Activer' ou 'Désactiver'
+
+            // Modifier le texte dynamique dans le modal
+            const modalBody = document.querySelector('#modalActionText');
+            modalBody.innerHTML = `Êtes-vous sûr de vouloir ${action} cette agence ?`;
+
+            // Ouvrir le modal
+            const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+            modal.show();
+
+            // Confirmer l'action
+            const confirmButton = document.getElementById('confirmAction');
+            confirmButton.onclick = function() {
+                // Créer un formulaire pour soumettre la requête
+                const form = document.createElement('form');
+                form.action = url; // L'URL de la requête
+                form.method = 'POST'; // Vous utilisez ici POST pour l'activation/désactivation
+                form.innerHTML = `
+                    @csrf
+                    @method('PATCH') <!-- Cette ligne simule une requête PATCH -->
+                `;
+                document.body.appendChild(form);
+                form.submit(); // Soumettre le formulaire
+            };
+        });
+    });
+
+    // Fermeture du modal (même lorsque l'utilisateur clique sur Annuler ou la croix)
+    const modalElement = document.getElementById('confirmationModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    // Supprimer l'effet flou lorsque le modal est fermé (via croix ou annuler)
+    const modalCloseButton = document.querySelectorAll('[data-bs-dismiss="modal"], .btn-close');
+
+    modalCloseButton.forEach(button => {
+        button.addEventListener('click', function () {
+            modal.hide(); // Fermer le modal
+
+            // Supprimer les éléments de fond (backdrop) et la classe modal-open
+            document.body.classList.remove('modal-open'); // Supprimer la classe modal-open
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove(); // Supprimer l'arrière-plan flou
+            }
+        });
+    });
+</script>
+
+@endpush

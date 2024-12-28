@@ -26,42 +26,16 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
     Route::get('/superadmin/admins', [SuperAdminController::class, 'showAdminsList'])->name('admins-list'); // Afficher la liste des administrateurs
     Route::post('/superadmin/admins', [SuperAdminController::class, 'storeAdmin'])->name('store-admin');    // Créer un administrateur
     Route::put('/superadmin/admins/{id}', [SuperAdminController::class, 'updateAdmin'])->name('update-admin'); // Modifier un administrateur
-    Route::put('/superadmin/user/{id}', [SuperAdminController::class, 'editUserOrAdmin'])->name('superadmin.updateUserOrAdmin');
-
-    // Routes pour les utilisateurs
-    Route::get('/superadmin/users', [SuperAdminController::class, 'showUsersList'])->name('users-list'); // Afficher la liste des utilisateurs
-    Route::post('/superadmin/users', [SuperAdminController::class, 'storeUser'])->name('store-user');    // Créer un utilisateur
-    Route::put('/superadmin/users/{id}', [SuperAdminController::class, 'updateUser'])->name('update-user'); // Modifier un utilisateur
-    Route::patch('/superadmin/users/{id}/reset-password', [SuperAdminController::class, 'resetUserPassword'])->name('reset-user-password'); // Réinitialiser le mot de passe
-    Route::patch('/superadmin/users/{id}/toggle-status', [SuperAdminController::class, 'toggleUserActivation'])->name('toggle-user-status'); // Activer/Désactiver un utilisateur
+    Route::patch('/superadmin/admins/{id}/toggle', [SuperAdminController::class, 'toggleAdminActivation'])->name('toggle-user-status');
 
     // Route facultative pour les statistiques
     Route::get('/superadmin/statistics', [SuperAdminController::class, 'getStatistics'])->name('statistics'); // Obtenir des statistiques
     
-    // Lister toutes les agences
-    Route::get('/agences', [AgenceController::class, 'index'])->name('agences.index');
-
-    // Afficher le formulaire de création
-    Route::get('/agences/create', [AgenceController::class, 'create'])->name('agences.create');
-
-    // Enregistrer une nouvelle agence
-    Route::post('/agences', [AgenceController::class, 'store'])->name('agences.store');
-
-    // Afficher les détails d'une agence
-    Route::get('/agences/{id}', [AgenceController::class, 'show'])->name('agences.show');
-
-    // Afficher le formulaire de modification
-    Route::get('/agences/{id}/edit', [AgenceController::class, 'edit'])->name('agences.edit');
-
-    // Mettre à jour une agence
-    Route::put('/agences/{id}', [AgenceController::class, 'update'])->name('agences.update');
-
-    // Supprimer une agence
-    Route::delete('/agences/{id}', [AgenceController::class, 'destroy'])->name('agences.destroy');
+    Route::resource('/superadmin/agences', AgenceController::class);
+    Route::patch('/superadmin/agence/{id}/toggle-status', [AgenceController::class, 'toggleAgencyStatus'])->name('agences.toggle-status');
 
 
-    // Nouvelle route pour basculer l'état d'un utilisateur
-    Route::get('superadmin/toggle-user-status/{id}', [SuperAdminController::class, 'toggleUserStatus'])->name('superadmin.toggleUserStatus');
+    Route::patch('superadmin/toggle-user-status/{id}', [SuperAdminController::class, 'toggleUserStatus'])->name('superadmin.toggleUserStatus');
 
     Route::get('/impersonate/{userId}', [ImpersonationController::class, 'impersonate'])->name('impersonate');
     Route::get('/stop-impersonate', [ImpersonationController::class, 'stopImpersonation'])->name('stopImpersonate');

@@ -122,9 +122,6 @@ public function showUsersList()
     return view('adminagence.create-user', compact('users'));
 }
 
-
-
-
 public function toggleUserStatus($id)
 {
     $user = User::findOrFail($id);

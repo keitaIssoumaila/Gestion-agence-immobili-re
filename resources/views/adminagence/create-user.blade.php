@@ -15,7 +15,7 @@
         </button>
     </div>
 
-    <table class="table table-bordered">
+    <table id="adminsTable" class="table table-bordered">
         <thead>
             <tr>
                 <th>Nom</th>
@@ -40,7 +40,7 @@
                 <td>
                     <!-- Bouton pour modifier -->
                     <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal-{{ $user->id }}">
-                        Modifier
+                        <i class="fas fa-edit"></i>
                     </button>
                     <!-- Bouton pour activer/désactiver -->
                     <button class="btn {{ $user->is_active ? 'btn-danger' : 'btn-success' }} btn-sm" data-bs-toggle="modal" data-bs-target="#toggleStatusModal-{{ $user->id }}">
@@ -167,6 +167,7 @@
         </div>
     </div>
 </div>
+
 @endsection
 
 

@@ -17,7 +17,12 @@ class Agence extends Model
         'nom', 'adresse', 'email', 'telephone', 'site_web', 'logo'
     ];
 
-    // Une agence peut avoir plusieurs biens immobiliers
+    // Une agence peut avoir plusieurs utilisateurs
+    public function users()
+    {
+        return $this->hasMany(User::class, 'agence_id');
+    }
+
     public function biens()
     {
         return $this->hasMany(Bien::class);
@@ -27,21 +32,24 @@ class Agence extends Model
     {
         return $this->hasMany(Proprietaires::class);
     }
+
     public function locataires()
     {
         return $this->hasMany(Locataires::class);
     }
+
     public function contrats()
     {
         return $this->hasMany(Contrat::class);
     }
+
     public function paiements()
     {
         return $this->hasMany(Paiements::class);
     }
+
     public function documents()
     {
         return $this->hasMany(Documents::class);
-
     }
 }

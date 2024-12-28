@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agence;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class AgenceController extends Controller
@@ -117,4 +118,42 @@ class AgenceController extends Controller
         $agence->delete();
         return redirect()->route('agences.index')->with('success', 'Agence supprimée avec succès !');
     }
+
+    public function toggleAgencyStatus($id)
+    {
+        if (Auth::user()->role !== 'super_admin') {
+            return redirect()->route('home')->with('error', 'Vous n\'avez pas l\'autorisation d\'effectuer cette action.');
+        }
+    
+        try {
+            // Trouver l'agence par son ID
+            $agence = Agence::findOrFail($id);
+    
+            // Sauvegarder l'état précédent de l'activation de l'agence
+            $wasActive = $agence->is_active;
+    
+            // Inverser l'état actif de l'agence
+            $agence->is_active = !$agence->is_active;
+            $agence->save();
+    
+            // Activer ou désactiver les utilisateurs de l'agence
+            if (!$agence->is_active && $wasActive) {
+                $agence->users()->update(['is_active' => false]);
+            } elseif ($agence->is_active && !$wasActive) {
+                $agence->users()->update(['is_active' => true]);
+            }
+    
+            // Message de succès
+            $statusMessage = $agence->is_active
+                ? "L'agence a été activée avec succès et tous les utilisateurs ont été réactivés."
+                : "L'agence a été désactivée avec succès et tous les utilisateurs ont été désactivés.";
+    
+            return redirect()->route('agences.index')->with('success', $statusMessage);
+    
+        } catch (\Exception $e) {
+            return redirect()->route('agences.index')->with('error', 'Une erreur est survenue. Veuillez réessayer.');
+        }
+    }
+    
+    
 }
