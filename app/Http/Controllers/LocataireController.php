@@ -1,73 +1,95 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Locataire;
+use App\Models\Agence;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class LocataireController extends Controller
 {
-    // Afficher la liste des locataires
+    public function __construct()
+    {
+        // Vérifier si l'utilisateur est authentifié et actif
+        $this->middleware(function ($request, $next) {
+            if (!Auth::check() || !Auth::user()->is_active) {
+                return redirect()->route('login')->withErrors('Votre compte est inactif.');
+            }
+
+            return $next($request);
+        });
+    }
+
     public function index()
     {
-        $locataires = Locataire::all();
+        // Vérifier que l'utilisateur appartient à l'agence de ses locataires
+        $locataires = Locataire::where('agence_id', Auth::user()->agence_id)->get();
         return view('locataires.index', compact('locataires'));
     }
 
-    // Afficher le formulaire de création d'un locataire
     public function create()
     {
-        return view('locataires.create');
+        // Vérifier que l'utilisateur appartient à une agence
+        if (Auth::user()->agence_id) {
+            return view('locataires.create');
+        }
+
+        return redirect()->route('locataires.index')->withErrors('Vous devez être associé à une agence pour ajouter un locataire.');
     }
 
-    // Stocker un nouveau locataire
     public function store(Request $request)
     {
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
-            'email' => 'nullable|email|unique:locataires,email',
-            'telephone' => 'required|string|max:15',
+            'email' => 'required|email|unique:locataires,email',
+            'genre' => 'required|string',
+            'telephone' => 'required|string',
+            'adresse' => 'required|string',
         ]);
 
-        Locataire::create($request->all());
-        return redirect()->route('locataires.index')->with('success', 'Locataire ajouté avec succès !');
+        // Créer un nouveau locataire
+        $locataire = new Locataire($request->all());
+        $locataire->agence_id = Auth::user()->agence_id;
+        $locataire->save();
+
+        return redirect()->route('locataires.index')->with('success', 'Locataire ajouté avec succès.');
     }
 
-    // Afficher un locataire spécifique
     public function show($id)
     {
-        $locataire = Locataire::findOrFail($id);
+        $locataire = Locataire::where('agence_id', Auth::user()->agence_id)->findOrFail($id);
         return view('locataires.show', compact('locataire'));
     }
 
-    // Afficher le formulaire d'édition d'un locataire
     public function edit($id)
     {
-        $locataire = Locataire::findOrFail($id);
+        $locataire = Locataire::where('agence_id', Auth::user()->agence_id)->findOrFail($id);
         return view('locataires.edit', compact('locataire'));
     }
 
-    // Mettre à jour un locataire
     public function update(Request $request, $id)
     {
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
-            'email' => 'nullable|email|unique:locataires,email,' . $id,
-            'telephone' => 'required|string|max:15',
+            'email' => 'required|email|unique:locataires,email,' . $id,
+            'genre' => 'required|string',
+            'telephone' => 'required|string',
+            'adresse' => 'required|string',
         ]);
 
-        $locataire = Locataire::findOrFail($id);
+        $locataire = Locataire::where('agence_id', Auth::user()->agence_id)->findOrFail($id);
         $locataire->update($request->all());
-        return redirect()->route('locataires.index')->with('success', 'Locataire mis à jour avec succès !');
+
+        return redirect()->route('locataires.index')->with('success', 'Locataire mis à jour avec succès.');
     }
 
-    // Supprimer un locataire
     public function destroy($id)
     {
-        $locataire = Locataire::findOrFail($id);
+        $locataire = Locataire::where('agence_id', Auth::user()->agence_id)->findOrFail($id);
         $locataire->delete();
-        return redirect()->route('locataires.index')->with('success', 'Locataire supprimé avec succès !');
+
+        return redirect()->route('locataires.index')->with('success', 'Locataire supprimé avec succès.');
     }
 }

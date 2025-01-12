@@ -3,82 +3,101 @@
 namespace App\Http\Controllers;
 
 use App\Models\Paiement;
-use App\Models\Contrat;  // Utilisation du modèle Contrat pour la relation
+use App\Models\Contrat;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PaiementController extends Controller
 {
-    // Afficher la liste des paiements
+    /**
+     * Vérifie si l'utilisateur est actif avant d'accéder à toutes les méthodes du contrôleur.
+     */
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (!Auth::user()->is_active) {
+                return redirect()->route('home')->with('error', 'Votre compte est inactif. Veuillez contacter l\'administrateur.');
+            }
+            return $next($request);
+        });
+    }
+
+    /**
+     * Affiche la liste des paiements pour l'agence de l'utilisateur connecté.
+     */
     public function index()
     {
-        // Récupérer tous les paiements avec leurs contrats associés
-        $paiements = Paiement::with('contrat')->get();
+        $paiements = Paiement::where('agence_id', Auth::user()->agence_id)->get();
         return view('paiements.index', compact('paiements'));
     }
 
-    // Afficher le formulaire de création d'un paiement
+    /**
+     * Affiche le formulaire pour créer un nouveau paiement.
+     */
     public function create()
     {
-        // Récupérer tous les contrats pour lier un paiement à un contrat spécifique
-        $contrats = Contrat::all();  // Tous les contrats
+        $contrats = Contrat::where('agence_id', Auth::user()->agence_id)->get();
         return view('paiements.create', compact('contrats'));
     }
 
-    // Stocker un paiement dans la base de données
+    /**
+     * Enregistre un nouveau paiement dans la base de données.
+     */
     public function store(Request $request)
     {
-        // Validation des données envoyées par le formulaire
         $request->validate([
-            'montant' => 'required|numeric',           // Montant du paiement
-            'date_paiement' => 'required|date',        // Date du paiement
-            'status' => 'required|string|max:255',     // Statut du paiement (ex: effectué, en attente, etc.)
-            'contrat_id' => 'required|exists:contrats,id', // Lien avec le contrat existant
+            'montant' => 'required|numeric',
+            'date_paiement' => 'required|date',
+            'status' => 'required|string',
+            'contrat_id' => 'nullable|exists:contrats,id',
         ]);
 
-        // Création du paiement avec les données validées
         Paiement::create([
             'montant' => $request->montant,
             'date_paiement' => $request->date_paiement,
             'status' => $request->status,
             'contrat_id' => $request->contrat_id,
+            'agence_id' => Auth::user()->agence_id,
         ]);
 
-        // Rediriger vers la liste des paiements avec un message de succès
-        return redirect()->route('paiements.index')->with('success', 'Paiement ajouté avec succès !');
+        return redirect()->route('paiements.index')->with('success', 'Paiement ajouté avec succès.');
     }
 
-    // Afficher un paiement spécifique
-    public function show($id)
+    /**
+     * Affiche les détails d'un paiement.
+     */
+    public function show(Paiement $paiement)
     {
-        // Récupérer le paiement et ses informations liées au contrat
-        $paiement = Paiement::with('contrat')->findOrFail($id);
+        $this->authorizeAccess($paiement);
+
         return view('paiements.show', compact('paiement'));
     }
 
-    // Afficher le formulaire d'édition d'un paiement
-    public function edit($id)
+    /**
+     * Affiche le formulaire pour modifier un paiement.
+     */
+    public function edit(Paiement $paiement)
     {
-        // Récupérer le paiement existant et tous les contrats pour modification
-        $paiement = Paiement::findOrFail($id);
-        $contrats = Contrat::all();  // Récupérer tous les contrats
+        $this->authorizeAccess($paiement);
+
+        $contrats = Contrat::where('agence_id', Auth::user()->agence_id)->get();
         return view('paiements.edit', compact('paiement', 'contrats'));
     }
 
-    // Mettre à jour un paiement existant
-    public function update(Request $request, $id)
+    /**
+     * Met à jour les informations d'un paiement.
+     */
+    public function update(Request $request, Paiement $paiement)
     {
-        // Validation des données envoyées par le formulaire
+        $this->authorizeAccess($paiement);
+
         $request->validate([
             'montant' => 'required|numeric',
             'date_paiement' => 'required|date',
-            'status' => 'required|string|max:255',
-            'contrat_id' => 'required|exists:contrats,id', // Lien avec le contrat existant
+            'status' => 'required|string',
+            'contrat_id' => 'nullable|exists:contrats,id',
         ]);
 
-        // Récupérer le paiement existant
-        $paiement = Paiement::findOrFail($id);
-
-        // Mettre à jour le paiement avec les nouvelles données
         $paiement->update([
             'montant' => $request->montant,
             'date_paiement' => $request->date_paiement,
@@ -86,20 +105,42 @@ class PaiementController extends Controller
             'contrat_id' => $request->contrat_id,
         ]);
 
-        // Rediriger vers la liste des paiements avec un message de succès
-        return redirect()->route('paiements.index')->with('success', 'Paiement mis à jour avec succès !');
+        return redirect()->route('paiements.index')->with('success', 'Paiement mis à jour avec succès.');
     }
 
-    // Supprimer un paiement
-    public function destroy($id)
+    /**
+     * Supprime un paiement de la base de données.
+     */
+    public function destroy(Paiement $paiement)
     {
-        // Récupérer le paiement à supprimer
-        $paiement = Paiement::findOrFail($id);
+        $this->authorizeAccess($paiement);
 
-        // Supprimer le paiement
         $paiement->delete();
+        return redirect()->route('paiements.index')->with('success', 'Paiement supprimé avec succès.');
+    }
 
-        // Rediriger vers la liste des paiements avec un message de succès
-        return redirect()->route('paiements.index')->with('success', 'Paiement supprimé avec succès !');
+    /**
+     * Génère un reçu pour un paiement spécifique.
+     */
+    public function printReceipt(Paiement $paiement)
+    {
+        $this->authorizeAccess($paiement);
+
+        $contrat = $paiement->contrat;
+        $agence = Auth::user()->agence;
+
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadView('paiements.receipt', compact('paiement', 'contrat', 'agence'));
+        return $pdf->stream('reçu_paiement_' . $paiement->id . '.pdf');
+    }
+
+    /**
+     * Autorise l'accès uniquement aux paiements appartenant à l'agence de l'utilisateur connecté.
+     */
+    private function authorizeAccess(Paiement $paiement)
+    {
+        if ($paiement->agence_id !== Auth::user()->agence_id) {
+            abort(403, 'Accès non autorisé.');
+        }
     }
 }

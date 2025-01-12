@@ -1,81 +1,135 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Reservation;
-use App\Models\BienModel;
-use App\Models\LocataireModel;
+use App\Models\Locataire;
+use App\Models\Bien;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ReservationController extends Controller
 {
-    // Afficher la liste des réservations
+    /**
+     * Vérifie si l'utilisateur est actif avant d'accéder à toutes les méthodes du contrôleur.
+     */
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (!Auth::user() || !Auth::user()->is_active) {
+                return redirect()->route('login')->with('error', 'Votre compte n\'est pas activé.');
+            }
+            return $next($request);
+        });
+    }
+
+    /**
+     * Affiche la liste des réservations pour l'agence de l'utilisateur connecté.
+     */
     public function index()
     {
-        $reservations = Reservation::with('bien', 'locataire')->get();
+        $user = Auth::user();
+        $reservations = Reservation::with(['locataire', 'bien'])
+            ->where('agence_id', $user->agence_id)
+            ->get();
+
         return view('reservations.index', compact('reservations'));
     }
 
-    // Afficher le formulaire de création d'une réservation
+    /**
+     * Affiche le formulaire pour créer une nouvelle réservation.
+     */
     public function create()
     {
-        $biens = BienModel::all(); // Tous les biens disponibles
-        $locataires = LocataireModel::all(); // Tous les locataires
-        return view('reservations.create', compact('biens', 'locataires'));
+        $user = Auth::user();
+        $locataires = Locataire::where('agence_id', $user->agence_id)->get();
+        $biens = Bien::where('agence_id', $user->agence_id)->get();
+
+        return view('reservations.create', compact('locataires', 'biens'));
     }
 
-    // Stocker une réservation
+    /**
+     * Enregistre une nouvelle réservation dans la base de données.
+     */
     public function store(Request $request)
     {
         $request->validate([
-            'locataire_id' => 'required|exists:locataires,id',  // Validation du locataire
-            'bien_id' => 'required|exists:biens,id',  // Validation du bien
-            'date_debut' => 'required|date',
-            'date_fin' => 'required|date|after:date_debut',
+            'locataire_id' => 'required|exists:locataires,id',
+            'bien_id' => 'required|exists:biens,id',
+            'date_reservation' => 'required|date',
+            'status' => 'required|string|max:50',
         ]);
 
-        Reservation::create($request->all());
+        $user = Auth::user();
+        Reservation::create(array_merge($request->all(), ['agence_id' => $user->agence_id]));
 
-        return redirect()->route('reservations.index')->with('success', 'Réservation ajoutée avec succès !');
+        return redirect()->route('reservations.index')->with('success', 'Réservation ajoutée avec succès.');
     }
 
-    // Afficher une réservation spécifique
+    /**
+     * Affiche les détails d'une réservation.
+     */
     public function show($id)
     {
-        $reservation = Reservation::findOrFail($id);
+        $user = Auth::user();
+        $reservation = Reservation::with(['locataire', 'bien'])
+            ->where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
+
         return view('reservations.show', compact('reservation'));
     }
 
-    // Afficher le formulaire d'édition d'une réservation
+    /**
+     * Affiche le formulaire pour modifier une réservation.
+     */
     public function edit($id)
     {
-        $reservation = Reservation::findOrFail($id);
-        $biens = BienModel::all(); // Récupérer tous les biens
-        $locataires = LocataireModel::all(); // Récupérer tous les locataires
-        return view('reservations.edit', compact('reservation', 'biens', 'locataires'));
+        $user = Auth::user();
+        $reservation = Reservation::where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
+
+        $locataires = Locataire::where('agence_id', $user->agence_id)->get();
+        $biens = Bien::where('agence_id', $user->agence_id)->get();
+
+        return view('reservations.edit', compact('reservation', 'locataires', 'biens'));
     }
 
-    // Mettre à jour une réservation existante
+    /**
+     * Met à jour une réservation existante.
+     */
     public function update(Request $request, $id)
     {
         $request->validate([
             'locataire_id' => 'required|exists:locataires,id',
             'bien_id' => 'required|exists:biens,id',
-            'date_debut' => 'required|date',
-            'date_fin' => 'required|date|after:date_debut',
+            'date_reservation' => 'required|date',
+            'status' => 'required|string|max:50',
         ]);
 
-        $reservation = Reservation::findOrFail($id);
+        $user = Auth::user();
+        $reservation = Reservation::where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
+
         $reservation->update($request->all());
 
-        return redirect()->route('reservations.index')->with('success', 'Réservation mise à jour avec succès !');
+        return redirect()->route('reservations.index')->with('success', 'Réservation mise à jour avec succès.');
     }
 
-    // Supprimer une réservation
+    /**
+     * Supprime une réservation de la base de données.
+     */
     public function destroy($id)
     {
-        $reservation = Reservation::findOrFail($id);
+        $user = Auth::user();
+        $reservation = Reservation::where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
+
         $reservation->delete();
 
-        return redirect()->route('reservations.index')->with('success', 'Réservation supprimée avec succès !');
+        return redirect()->route('reservations.index')->with('success', 'Réservation supprimée avec succès.');
     }
 }

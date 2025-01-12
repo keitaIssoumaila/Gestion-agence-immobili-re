@@ -3,88 +3,123 @@
 namespace App\Http\Controllers;
 
 use App\Models\Proprietaire;
+use App\Models\Agence;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProprietaireController extends Controller
 {
-    // Afficher la liste des propriétaires
+    /**
+     * Vérifie si l'utilisateur est actif avant d'accéder à toutes les méthodes du contrôleur.
+     */
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (!Auth::user() || !Auth::user()->is_active) {
+                return redirect()->route('login')->with('error', 'Votre compte n\'est pas activé.');
+            }
+            return $next($request);
+        });
+    }
+
+    /**
+     * Affiche la liste des propriétaires pour l'agence de l'utilisateur connecté.
+     */
     public function index()
     {
-        $proprietaires = Proprietaire::all();
+        $user = Auth::user();
+        $proprietaires = Proprietaire::where('agence_id', $user->agence_id)->get();
         return view('proprietaires.index', compact('proprietaires'));
     }
 
-    // Afficher le formulaire de création d'un propriétaire
+    /**
+     * Affiche le formulaire pour créer un nouveau propriétaire.
+     */
     public function create()
     {
         return view('proprietaires.create');
     }
 
-    // Enregistrer un nouveau propriétaire dans la base de données
+    /**
+     * Enregistre un nouveau propriétaire dans la base de données.
+     */
     public function store(Request $request)
     {
-        // Validation des données
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
-            'email' => 'nullable|email|unique:proprietaires,email',
-            'telephone' => 'required|string|max:15',
-            'adresse' => 'required|string|max:255',
+            'email' => 'required|email|unique:proprietaires,email',
+            'genre' => 'nullable|string|max:255',
+            'telephone' => 'nullable|string|max:15',
+            'adresse' => 'nullable|string|max:255',
         ]);
 
-        // Créer un propriétaire
-        Proprietaire::create($request->all());
+        $user = Auth::user();
+        Proprietaire::create(array_merge($request->all(), ['agence_id' => $user->agence_id]));
 
-        // Rediriger avec un message de succès
         return redirect()->route('proprietaires.index')->with('success', 'Propriétaire ajouté avec succès.');
     }
 
-    // Afficher un propriétaire spécifique (et ses biens)
+    /**
+     * Affiche les détails d'un propriétaire.
+     */
     public function show($id)
-{
-    // Récupérer le propriétaire avec ses biens
-    $proprietaire = Proprietaire::with('biens')->findOrFail($id);
-    
-    // Grouper les biens par type et compter leur nombre
-    $biensParType = $proprietaire->biens->groupBy('type')->map(function($biens) {
-        return $biens->count();
-    });
-    
-    // Passer ces informations à la vue
-    return view('proprietaires.show', compact('proprietaire', 'biensParType'));
-}
+    {
+        $user = Auth::user();
+        $proprietaire = Proprietaire::where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
 
-    // Afficher le formulaire d'édition d'un propriétaire
+        return view('proprietaires.show', compact('proprietaire'));
+    }
+
+    /**
+     * Affiche le formulaire pour modifier un propriétaire.
+     */
     public function edit($id)
     {
-        $proprietaire = Proprietaire::findOrFail($id);
+        $user = Auth::user();
+        $proprietaire = Proprietaire::where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
+
         return view('proprietaires.edit', compact('proprietaire'));
     }
 
-    // Mettre à jour un propriétaire
+    /**
+     * Met à jour les informations d'un propriétaire.
+     */
     public function update(Request $request, $id)
     {
-        // Validation des données
         $request->validate([
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
-            'email' => 'nullable|email|unique:proprietaires,email,' . $id,
-            'telephone' => 'required|string|max:15',
-            'adresse' => 'required|string|max:255',
+            'email' => 'required|email|unique:proprietaires,email,' . $id,
+            'genre' => 'nullable|string|max:255',
+            'telephone' => 'nullable|string|max:15',
+            'adresse' => 'nullable|string|max:255',
         ]);
 
-        // Trouver le propriétaire et mettre à jour ses informations
-        $proprietaire = Proprietaire::findOrFail($id);
+        $user = Auth::user();
+        $proprietaire = Proprietaire::where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
+
         $proprietaire->update($request->all());
 
-        // Rediriger avec un message de succès
         return redirect()->route('proprietaires.index')->with('success', 'Propriétaire mis à jour avec succès.');
     }
 
-    // Supprimer un propriétaire
+    /**
+     * Supprime un propriétaire de la base de données.
+     */
     public function destroy($id)
     {
-        $proprietaire = Proprietaire::findOrFail($id);
+        $user = Auth::user();
+        $proprietaire = Proprietaire::where('id', $id)
+            ->where('agence_id', $user->agence_id)
+            ->firstOrFail();
+
         $proprietaire->delete();
 
         return redirect()->route('proprietaires.index')->with('success', 'Propriétaire supprimé avec succès.');

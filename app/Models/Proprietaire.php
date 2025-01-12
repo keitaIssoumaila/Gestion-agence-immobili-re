@@ -12,7 +12,7 @@ class Proprietaire extends Model
     protected $table = 'proprietaires';
 
     // Autoriser l'ajout en masse des champs suivants
-    protected $fillable = ['nom', 'prenom', 'email', 'telephone', 'adresse', 'agence_id'
+    protected $fillable = ['nom', 'prenom', 'email', 'genre', 'telephone', 'adresse', 'agence_id'
                         ];
 
     public function agence()

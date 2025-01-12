@@ -2,95 +2,147 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Bien;
 use Illuminate\Http\Request;
+use App\Models\Bien;
+use App\Models\Proprietaire;
+use Illuminate\Support\Facades\Auth;
 
 class BienController extends Controller
 {
-    // Afficher la liste des biens
-    public function index()
+    public function __construct()
     {
-        // Récupérer les biens avec pagination (par exemple, 10 biens par page)
-        $biens = Bien::paginate(10);  // Change "10" pour le nombre de biens que tu veux par page
-    
-        // Retourner la vue avec les biens paginés
-        return view('biens.index', compact('biens'));
-    }
-    // Afficher le formulaire de création d'un bien
-    public function create()
-    {
-        // Récupérer toutes les agences et propriétaires disponibles
-        $agences = Agence::all();
-        $proprietaires = Proprietaire::all();
-    
-        // Retourner la vue 'biens.create' avec les données des agences et propriétaires
-        return view('biens.create', compact('agences', 'proprietaires'));
+        $this->middleware(function ($request, $next) {
+            if (!Auth::user() || !Auth::user()->is_active) {
+                return redirect()->route('login')->with('error', 'Votre compte n\'est pas activé.');
+            }
+            return $next($request);
+        });
     }
 
-    // Stocker un nouveau bien
+    /**
+     * Liste les biens de l'agence connectée.
+     */
+    public function index()
+    {
+        $user = Auth::user();
+        $biens = Bien::with(['proprietaire', 'reservations', 'contrats'])
+            ->where('agence_id', $user->agence_id)
+            ->get();
+
+        return view('biens.index', compact('biens'));
+    }
+
+    /**
+     * Affiche le formulaire de création d'un bien.
+     */
+    public function create()
+    {
+        $proprietaires = Proprietaire::where('agence_id', Auth::user()->agence_id)->get();
+        return view('biens.create', compact('proprietaires'));
+    }
+
+    /**
+     * Enregistre un nouveau bien dans la base de données.
+     */
     public function store(Request $request)
     {
         $request->validate([
             'nom' => 'required|string|max:255',
             'type' => 'required|string|max:255',
             'adresse' => 'required|string|max:255',
-            'surface'=>'nullable|string|max:255',
+            'surface' => 'required|numeric',
             'prix' => 'required|numeric',
-            'description' => 'nullable|string|max:255',
-            'agence_id' => 'required|exists:agences,id',  // Valider l'existence de l'agence
-            'proprietaire_id' => 'required|exists:proprietaires,id',  // Valider l'existence du propriétaire
-            
+            'status' => 'required|string|max:50',  
+            'description' => 'nullable|string',
+            'proprietaire_id' => 'required|exists:proprietaires,id',
         ]);
 
-        Bien::create($request->all());
-        return redirect()->route('biens.index')->with('success', 'Bien ajouté avec succès !');
+        $user = Auth::user();
+        Bien::create(array_merge($request->all(), ['agence_id' => $user->agence_id]));
+
+        return redirect()->route('biens.index')->with('success', 'Bien ajouté avec succès.');
     }
 
-    // Afficher un bien spécifique
+    /**
+     * Affiche les détails d'un bien.
+     */
     public function show($id)
     {
-        $bien = Bien::with(['agence', 'proprietaire'])->findOrFail($id);
+        $bien = Bien::with(['proprietaire', 'reservations', 'contrats'])
+            ->where('id', $id)
+            ->where('agence_id', Auth::user()->agence_id)
+            ->firstOrFail();
+
         return view('biens.show', compact('bien'));
     }
 
-    // Afficher le formulaire d'édition d'un bien
+    /**
+     * Affiche le formulaire d'édition d'un bien.
+     */
     public function edit($id)
     {
-        $bien = Bien::findOrFail($id);
-        return view('biens.edit', compact('bien'));
+        $bien = Bien::where('id', $id)
+            ->where('agence_id', Auth::user()->agence_id)
+            ->firstOrFail();
+
+        $proprietaires = Proprietaire::where('agence_id', Auth::user()->agence_id)->get();
+
+        return view('biens.edit', compact('bien', 'proprietaires'));
     }
 
-    // Mettre à jour un bien
+    /**
+     * Met à jour un bien existant.
+     */
     public function update(Request $request, $id)
     {
         $request->validate([
             'nom' => 'required|string|max:255',
             'type' => 'required|string|max:255',
             'adresse' => 'required|string|max:255',
-            'surface'=>'nullable|string|max:255',
+            'surface' => 'required|numeric',
             'prix' => 'required|numeric',
-            'description' => 'nullable|string|max:255',
-            'agence_id' => 'required|exists:agences,id',  // Valider l'existence de l'agence
-            'proprietaire_id' => 'required|exists:proprietaires,id',  // Valider l'existence du propriétaire
+            'status' => 'required|string|max:50',
+            'description' => 'nullable|string',
+            'proprietaire_id' => 'required|exists:proprietaires,id',
         ]);
 
-        $bien = Bien::findOrFail($id);
+        $bien = Bien::where('id', $id)
+            ->where('agence_id', Auth::user()->agence_id)
+            ->firstOrFail();
+
         $bien->update($request->all());
-        return redirect()->route('biens.index')->with('success', 'Bien mis à jour avec succès !');
+
+        return redirect()->route('biens.index')->with('success', 'Bien mis à jour avec succès.');
     }
 
-    // Supprimer un bien
+    /**
+     * Supprime un bien.
+     */
     public function destroy($id)
     {
-        $bien = Bien::findOrFail($id);
-    
-        // Vérifier s'il y a des réservations associées au bien
-        if ($bien->reservations()->count() > 0) {
-            return redirect()->route('biens.index')->with('error', 'Impossible de supprimer ce bien, il est lié à des réservations.');
-        }
-    
+        $bien = Bien::where('id', $id)
+            ->where('agence_id', Auth::user()->agence_id)
+            ->firstOrFail();
+
         $bien->delete();
-    
-        return redirect()->route('biens.index')->with('success', 'Bien supprimé avec succès !');
+
+        return redirect()->route('biens.index')->with('success', 'Bien supprimé avec succès.');
     }
+
+    /**
+     * Génère des statistiques pour les biens de l'agence connectée.
+     */
+    public function statistics()
+    {
+        $user = Auth::user();
+    
+        $stats = Bien::where('agence_id', $user->agence_id)
+            ->selectRaw('status, nom, type, COUNT(*) as count')
+            ->groupBy('status', 'nom', 'type')
+            ->orderBy('status')
+            ->get();
+    
+        return view('biens.statistics', compact('stats'));
+    }
+    
 }

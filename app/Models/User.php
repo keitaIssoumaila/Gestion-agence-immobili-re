@@ -24,7 +24,8 @@ class User extends Authenticatable
         'agence_id',
         'role',
         'is_active',
-        'create_by'
+        'create_by',
+        'photo'
     ];
 
     /**

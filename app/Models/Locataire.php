@@ -14,7 +14,7 @@ class Locataire extends Model
 
     // Colonnes qui peuvent être assignées en masse
     protected $fillable = [
-        'nom', 'prenom', 'email', 'telephone', 'adresse', 'agence_id'
+        'nom', 'prenom', 'email', 'genre', 'telephone', 'adresse', 'agence_id'
     ];
 
     public function agence()

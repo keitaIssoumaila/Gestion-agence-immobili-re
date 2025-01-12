@@ -42,6 +42,18 @@ Route::middleware(['auth', 'role:super_admin'])->group(function () {
 
 });
 
+Route::middleware(['auth', 'checkRole'])->group(function () {
+    Route::resource('biens', BienController::class);
+    Route::get('biens/statistics', [BienController::class, 'statistics'])->name('biens.statistics');
+    Route::resource('contrats', ContratController::class);
+    Route::resource('locataires', LocataireController::class);
+    Route::resource('paiements', PaiementController::class);
+    Route::get('/paiements/{paiement}/receipt', [PaiementController::class, 'printReceipt'])->name('paiements.printReceipt');
+    Route::resource('proprietaires', ProprietaireController::class);
+    Route::resource('reservations', ReservationController::class);
+
+});
+
 Route::middleware(['auth', 'role:admin'])->group(function(){
     Route::get('/adminagence/create-user', [AdminAgenceController::class, 'showCreateUserForm'])->name('adminagence.create-user');
     Route::post('/adminagence/create-user', [AdminAgenceController::class, 'storeUser'])->name('adminagence.store-user');

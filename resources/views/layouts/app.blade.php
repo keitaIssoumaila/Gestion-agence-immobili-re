@@ -8,7 +8,7 @@
     <title>Gestion des agences</title>
 
     <!-- Bootstrap CSS local -->
-    <link rel="stylesheet" href="{{ asset('css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/bootstrap/bootstrap.min.css') }}">
 
     <link rel="stylesheet" href="{{ asset('css/all.min.css') }}">
 
@@ -16,7 +16,7 @@
 
 
     <!-- DataTables CSS local -->
-    <link rel="stylesheet" href="{{ asset('css/dataTables.bootstrap5.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dataTable/dataTables.bootstrap5.min.css') }}">
 
     <style>
         /* Centrer le message de succès/erreur */
@@ -54,6 +54,22 @@
         @keyframes fadeOut {
             0% { opacity: 1; }
             100% { opacity: 0; }
+        }
+
+        /* Ajout des styles pour l'impression */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .card, .card * {
+                visibility: visible;
+            }
+            .card {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -98,14 +114,14 @@
     </footer>
 
     <!-- jQuery local -->
-    <script src="{{ asset('js/jquery.min.js') }}"></script>
+    <script src="{{ asset('js/jquery/jquery.min.js') }}"></script>
 
     <!-- Bootstrap JS local -->
-    <script src="{{ asset('js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('js/bootstrap/bootstrap.bundle.min.js') }}"></script>
 
     <!-- DataTables JS local -->
-    <script src="{{ asset('js/dataTables.js') }}"></script>
-    <script src="{{ asset('js/dataTables.bootstrap5.min.js') }}"></script>
+    <script src="{{ asset('js/dataTable/dataTables.js') }}"></script>
+    <script src="{{ asset('js/dataTable/dataTables.bootstrap5.min.js') }}"></script>
 
     <!-- Script pour DataTables -->
     <script>
