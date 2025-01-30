@@ -55,6 +55,7 @@ Route::middleware(['auth', 'checkRole'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function(){
+    
     Route::get('/adminagence/create-user', [AdminAgenceController::class, 'showCreateUserForm'])->name('adminagence.create-user');
     Route::post('/adminagence/create-user', [AdminAgenceController::class, 'storeUser'])->name('adminagence.store-user');
     

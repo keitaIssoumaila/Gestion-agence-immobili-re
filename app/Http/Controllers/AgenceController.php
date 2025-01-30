@@ -29,6 +29,7 @@ class AgenceController extends Controller
             'nom' => 'required|string|max:255',
             'adresse' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:agences,email',
+            'site_web' => 'nullable|site_web|unique:agences,site_web',
             'telephone' => 'nullable|string|max:15',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',  // Validation pour l'image
         ]);
@@ -46,6 +47,7 @@ class AgenceController extends Controller
             'nom' => $request->input('nom'),
             'adresse' => $request->input('adresse'),
             'email' => $request->input('email'), // Ajouter l'email
+            'site_web'=>$request->input('site_web'),
             'telephone' => $request->input('telephone'),
             'logo' => $logoPath,  // Enregistrer le chemin du logo
         ]);
@@ -67,43 +69,39 @@ class AgenceController extends Controller
         return view('agences.edit', compact('agence'));
     }
 
-    // Mettre à jour une agence
     public function update(Request $request, $id)
-    {
-        $request->validate([
-            'nom' => 'required|string|max:255',
-            'adresse' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:agences,email',
-            'telephone' => 'nullable|string|max:15',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',  // Validation du logo
-        ]);
+{
+    $request->validate([
+        'nom' => 'required|string|max:255',
+        'adresse' => 'nullable|string|max:255',
+        'email' => 'nullable|email|unique:agences,email,' . $id,
+        'site_web' => 'nullable|string|unique:agences,site_web,' . $id,
+        'telephone' => 'nullable|string|max:15',
+        'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+    ]);
 
-        $agence = Agence::findOrFail($id);
+    $agence = Agence::findOrFail($id);
 
-        // Si un nouveau logo est téléchargé
-        if ($request->hasFile('logo')) {
-            // Supprimer l'ancien logo s'il existe
-            if ($agence->logo) {
-                Storage::disk('public')->delete($agence->logo);
-            }
-
-            // Sauvegarder le nouveau logo
-            $logoPath = $request->file('logo')->store('logos', 'public');
-        } else {
-            $logoPath = $agence->logo;  // Ne pas changer le logo s'il n'y a pas de nouveau fichier
+    if ($request->hasFile('logo')) {
+        if ($agence->logo) {
+            Storage::disk('public')->delete($agence->logo);
         }
-
-        // Mettre à jour l'agence
-        $agence->update([
-            'nom' => $request->input('nom'),
-            'adresse' => $request->input('adresse'),
-            'email' => $request->input('email'), // Ajouter l'email
-            'telephone' => $request->input('telephone'),
-            'logo' => $logoPath,  // Mettre à jour le chemin du logo
-        ]);
-
-        return redirect()->route('agences.index')->with('success', 'Agence mise à jour avec succès !');
+        $logoPath = $request->file('logo')->store('logos', 'public');
+    } else {
+        $logoPath = $agence->logo;
     }
+
+    $agence->update([
+        'nom' => $request->input('nom'),
+        'adresse' => $request->input('adresse'),
+        'email' => $request->input('email'),
+        'site_web' => $request->input('site_web'),
+        'telephone' => $request->input('telephone'),
+        'logo' => $logoPath,
+    ]);
+
+    return redirect()->route('agences.index')->with('success', 'Agence mise à jour avec succès !');
+}
 
     // Supprimer une agence
     public function destroy($id)

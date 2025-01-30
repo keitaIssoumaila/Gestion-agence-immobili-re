@@ -75,6 +75,8 @@
 </head>
 
 <body>
+    <!-- Inclure la navbar -->
+    @include('layouts.navbar')
     @if(session('success'))
         <div class="alert-container fade-out" id="success-alert">
             <div class="alert-success-custom">

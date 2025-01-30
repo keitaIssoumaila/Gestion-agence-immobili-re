@@ -19,7 +19,9 @@ class UserController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
-                'photo_url' => $user->photo ? asset('storage/' . $user->photo) : null,
+                'photo_url' => $user->photo 
+                    ? asset('storage/' . $user->photo) 
+                    : asset('images/default-avatar.png'), // Photo par défaut
             ],
         ], 200); 
     } 
@@ -34,6 +36,7 @@ class UserController extends Controller
 
         $user = Auth::user();
 
+        // Gestion de l'upload et de la suppression de l'ancienne photo
         if ($request->hasFile('photo')) {
             if ($user->photo) {
                 Storage::disk('public')->delete($user->photo);
@@ -52,7 +55,9 @@ class UserController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
-                'photo_url' => $user->photo ? asset('storage/' . $user->photo) : null,
+                'photo_url' => $user->photo 
+                    ? asset('storage/' . $user->photo) 
+                    : asset('images/default-avatar.png'), // Photo par défaut
             ],
         ], 200);
     }

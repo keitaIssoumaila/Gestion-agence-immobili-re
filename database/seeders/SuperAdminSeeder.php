@@ -20,6 +20,7 @@ class SuperAdminSeeder extends Seeder
                 'name' => 'Soumaila',
                 'password' => Hash::make('infoma1*'),
                 'role' => 'super_admin',
+                'photo' => 'images/default-avatar.png',
                 'agence_id' => null, // Assurez-vous que ce champ est nullable
             ]
         );
